@@ -693,6 +693,12 @@ function loadExample() {
     if (alignTarget === 'b') syncAlignSliders();
   };
 }
+
+// Check URL parameter and load example if requested
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('example') === 'true') {
+  window.addEventListener('DOMContentLoaded', loadExample);
+}
 </script>
 </body>
 </html>
