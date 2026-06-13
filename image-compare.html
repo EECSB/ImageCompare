@@ -388,6 +388,11 @@ const xf = {
   b: { tx: 0, ty: 0, sc: 1, rot: 0, rx: 0, ry: 0, persp: 800 }
 };
 
+// Pixel-based alignment values (tx, ty, persp) are stored relative to this
+// reference width — the viewer's max width — and scaled to the live viewer
+// width on apply, so both images stay locked together when the page is resized.
+const ALIGN_REF_W = 900;
+
 const slider  = document.getElementById('main-slider');
 const viewer  = document.getElementById('viewer');
 const imgA    = document.getElementById('img-a');
@@ -403,10 +408,13 @@ function applyTransform(which) {
   const t = xf[which];
   const pc  = document.getElementById('pc-' + which);
   const img = which === 'a' ? imgA : imgB;
-  // Perspective container: pan, zoom, Z-rotation (and sets perspective depth)
-  pc.style.transform  = `perspective(${t.persp}px) translate(${t.tx}px,${t.ty}px) scale(${t.sc}) rotateZ(${t.rot}deg)`;
-  // Image: centering + X/Y tilt
+  // Scale pixel-based alignment (pan + perspective depth) to the current viewer
+  // width so both images track each other identically when the page is resized.
   const vw = viewer.clientWidth;
+  const k  = (vw / ALIGN_REF_W) || 1;
+  // Perspective container: pan, zoom, Z-rotation (and sets perspective depth)
+  pc.style.transform  = `perspective(${t.persp * k}px) translate(${t.tx * k}px,${t.ty * k}px) scale(${t.sc}) rotateZ(${t.rot}deg)`;
+  // Image: centering + X/Y tilt
   const iw = img.naturalWidth  ? vw : vw;
   const ih = img.naturalHeight ? img.naturalHeight * (vw / img.naturalWidth) : vw * 9/16;
   img.style.transform = `translate(${-iw/2}px, ${-ih/2}px) rotateX(${t.rx}deg) rotateY(${t.ry}deg)`;
@@ -528,8 +536,10 @@ function panMove(e) {
   const dy = cy - lastY;
   lastX = cx; lastY = cy;
   if (alignTarget === 'a' || alignTarget === 'b') {
-    xf[alignTarget].tx += dx;
-    xf[alignTarget].ty += dy;
+    // Convert the on-screen drag delta back into reference-width space.
+    const k = (viewer.clientWidth / ALIGN_REF_W) || 1;
+    xf[alignTarget].tx += dx / k;
+    xf[alignTarget].ty += dy / k;
     applyTransform(alignTarget);
     syncAlignSliders();
   }
